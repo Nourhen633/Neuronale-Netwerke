@@ -24,12 +24,11 @@ std::vector<double> normalize(const std::vector<T>& values) {
 		if (values[i] > max) max = values[i];
 	}
 
-	if (max == T{}) throw std::invalid_argument("normalize: max is zero");
-	//weg machen
+	const int maxVal = static_cast<int>(max);
 
 	std::vector<double> ready(values.size());
 	for (std::size_t i = 0; i < values.size(); i++) {
-		ready[i] = (double) values[i] / max;
+		ready[i] = (double) values[i] / maxVal;
 		
 	}
 	return ready;
