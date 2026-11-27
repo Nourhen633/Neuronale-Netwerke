@@ -87,3 +87,117 @@ const std::vector<double>& Layer::getDBias() const {
 }
 
 }
+/* AUFGABE 5a - Forward Propagation */
+
+void Layer::forwardPropagation(const std::vector<double>& previousLayerOutput) {
+
+    preActivationOutput.assign(layerOutputSize, 0.0);
+    activationOutput.assign(layerOutputSize, 0.0);
+
+    for (uint64_t i = 0; i < layerOutputSize; i++) {
+
+        for (uint64_t j = 0; j < layerInputSize; j++) {
+            preActivationOutput[i] += weights[i][j] * previousLayerOutput[j];
+        }
+
+        preActivationOutput[i] += bias[i];
+
+        activationOutput[i] = activationFunction->activation(preActivationOutput[i]);
+    }
+}
+
+
+/* AUFGABE 5b - Backward Propagation */
+
+void Layer::backwardPropagation(
+    const std::vector<double>& dActivationOutput,
+    const std::vector<double>& previousLayerOutput) {
+
+    if (activationFunction == nullptr) {
+        throw std::logic_error("No activation function");
+    }
+
+    std::vector<double> dPreActivation(layerOutputSize, 0.0);
+
+    for (uint64_t i = 0; i < layerOutputSize; i++) {
+        dPreActivation[i] = dActivationOutput[i] *
+            activationFunction->activationBackwards(preActivationOutput[i]);
+    }
+
+    dWeights.assign(layerOutputSize, std::vector<double>(layerInputSize, 0.0));
+
+    for (uint64_t i = 0; i < layerOutputSize; i++) {
+        for (uint64_t j = 0; j < layerInputSize; j++) {
+            dWeights[i][j] = dPreActivation[i] * previousLayerOutput[j];
+        }
+    }
+
+    dBias = dPreActivation;
+
+    for (uint64_t i = 0; i < layerOutputSize; i++) {
+        for (uint64_t j = 0; j < layerInputSize; j++) {
+            accumulatedDWeights[i][j] += dWeights[i][j];
+        }
+
+        accumulatedDBias[i] += dBias[i];
+    }
+
+    numProcessedSamples++;
+
+    dPreviousLayerOutput.assign(layerInputSize, 0.0);
+
+    for (uint64_t j = 0; j < layerInputSize; j++) {
+        for (uint64_t i = 0; i < layerOutputSize; i++) {
+            dPreviousLayerOutput[j] += weights[i][j] * dPreActivation[i];
+        }
+    }
+}
+
+
+/* AUFGABE 5c - Update Parameters */
+
+void Layer::updateParameters(
+    const std::vector<std::vector<double>>& dWeights,
+    const std::vector<double>& dBias,
+    double learningRate) {
+
+    for (uint64_t i = 0; i < layerOutputSize; i++) {
+        for (uint64_t j = 0; j < layerInputSize; j++) {
+            weights[i][j] -= learningRate * dWeights[i][j];
+        }
+
+        bias[i] -= learningRate * dBias[i];
+    }
+}
+
+
+/* AUFGABE 5d - Commit to Weights */
+
+void Layer::commitToWeights(double learningRate) {
+
+    if (numProcessedSamples == 0) {
+        return;
+    }
+
+    for (uint64_t i = 0; i < layerOutputSize; i++) {
+        for (uint64_t j = 0; j < layerInputSize; j++) {
+            accumulatedDWeights[i][j] /= numProcessedSamples;
+        }
+
+        accumulatedDBias[i] /= numProcessedSamples;
+    }
+
+    updateParameters(accumulatedDWeights, accumulatedDBias, learningRate);
+
+    for (uint64_t i = 0; i < layerOutputSize; i++) {
+        for (uint64_t j = 0; j < layerInputSize; j++) {
+            accumulatedDWeights[i][j] = 0.0;
+        }
+
+        accumulatedDBias[i] = 0.0;
+    }
+
+    numProcessedSamples = 0;
+}
+
+}
